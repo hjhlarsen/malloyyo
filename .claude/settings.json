@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__malloyyo_author__compile",
+      "mcp__malloyyo_author__compile_file",
+      "mcp__malloyyo_author__prettify",
+      "mcp__malloyyo_author__query",
+      "mcp__malloyyo_author__yo_help"
+    ]
+  }
+}

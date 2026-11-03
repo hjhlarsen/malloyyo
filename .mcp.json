@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "malloyyo_author": {
+      "command": "sh",
+      "args": [
+        "-c",
+        "D=\"$HOME/.config/malloyyo\"; [ -f \"$D/rds.env\" ] && { set -a; . \"$D/rds.env\"; set +a; }; [ -f \"$D/rds_password\" ] && export RDS_PASSWORD=\"$(cat \"$D/rds_password\")\"; exec malloyyo mcp --develop"
+      ]
+    }
+  }
+}

@@ -1,0 +1,10 @@
+##! experimental.givens
+import "company_stats.malloy"
+
+given:
+  # label="Period"
+  PERIOD :: filter<date> is f'365 days'
+  # label="Plan" control=multiselect suggest { query=plan_suggest dimension=plan_name }
+  PLAN :: filter<string> is f''
+  # label="Include test accounts"
+  INCLUDE_TEST :: boolean is false

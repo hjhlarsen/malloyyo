@@ -1,0 +1,42 @@
+// Written by `malloyyo init` into a Malloy MODEL repo — this is what makes the
+// repo openable as a GitHub Codespace (or a local Dev Container) with the whole
+// toolchain already installed: Claude Code, the Malloy and Claude VS Code
+// extensions, the `malloyyo` CLI, Node 24, Playwright/Chromium, the Google
+// Cloud CLI. `init` never overwrites an existing one, so local edits survive.
+//
+// The image is prebuilt and published by the malloyyo repository
+// (devcontainer/Dockerfile there), so creating the codespace is a pull rather
+// than a build. The extensions and the dashboard ports are not listed here
+// because the image carries them itself, in a `devcontainer.metadata` label
+// that the Dev Containers tooling merges into this file.
+//
+// See https://github.com/malloydata/malloyyo/blob/main/docs/devcontainer.md
+{
+  "name": "Malloy model",
+  "image": "ghcr.io/malloydata/malloyyo-devcontainer:latest",
+
+  // Makes `cd <repo> && claude` open in AUTHOR mode: writes .mcp.json (the
+  // `malloyyo mcp --develop` server), pre-approves its tools in
+  // .claude/settings.json, and scaffolds index.malloy if the repo has none. It
+  // merges rather than clobbers, so re-running it on every rebuild is safe —
+  // and once you have committed what it writes, you can drop this line.
+  "postCreateCommand": "malloyyo init",
+
+  // One screen of "what do I type now", printed into each new terminal.
+  "postAttachCommand": "malloyyo-devcontainer-info",
+
+  // Codespaces secrets (repo Settings → Secrets and variables → Codespaces)
+  // arrive as environment variables on their own — nothing to declare here.
+  // This block is for a LOCAL Dev Container, where the values have to be
+  // forwarded from your own shell. Never commit the values themselves.
+  //
+  // "remoteEnv": {
+  //   "MALLOYYO_TOKEN": "${localEnv:MALLOYYO_TOKEN}",
+  //   "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}"
+  // },
+
+  "hostRequirements": {
+    "cpus": 2,
+    "memory": "4gb"
+  }
+}

@@ -1,0 +1,75 @@
+##! experimental.givens
+
+#" Daily per-company activity stats for BasicOps, joined to company and plan details.
+#(agent) One row per company per day. Use total_activity, new_users, etc. as measures; group by stat_month, plan_name, company_name. Test accounts are flagged by is_test_account.
+source: company_stats is rds.table("B_CompanyStats") extend {
+  primary_key: Id
+
+  join_one: company is rds.table("B_Company") extend { primary_key: Id } on CompanyId = company.Id
+  join_one: plan_config is rds.table("B_PlanConfiguration") extend { primary_key: Id }
+    on company.PlanConfiguration = plan_config.Id
+
+  dimension:
+    stat_date is Created
+    stat_week is Created.week
+    stat_month is Created.month
+    stat_year is Created.year
+
+    company_name is company.Name
+    company_id is CompanyId
+    plan_name is plan_config.Name
+    plan_group is plan_config.GroupName
+    billing_plan is company.Plan2
+    company_state_code is company.State
+    company_created is company.Created
+    signup_month is company.Created.month
+    is_test_account is coalesce(company.TestAccount::number, 0) = 1
+    is_disabled is coalesce(company.Disabled::number, 0) = 1
+
+  measure:
+    company_days is count()
+    active_companies is count(CompanyId)
+    total_activity is ActivityCount.sum()
+    user_activity is UserActivityCount.sum()
+    new_users is NewUsers.sum()
+    new_signups is NewSignup.sum()
+    comments is CommentNo.sum()
+    chat_messages is ChatNo.sum()
+    new_projects is NewProjects.sum()
+    new_sections is NewSections.sum()
+    new_tasks is NewTasks.sum()
+    new_notes is NewNotes.sum()
+    new_forms is NewForms.sum()
+    active_time_total is ActiveTime.sum()
+    activity_per_company_day is total_activity / company_days
+
+  view: by_month is {
+    group_by: stat_month
+    aggregate: total_activity, new_users, active_companies
+    order_by: stat_month
+  }
+
+  view: by_plan is {
+    group_by: plan_name
+    aggregate: total_activity, active_companies, new_users
+    order_by: total_activity desc
+    limit: 12
+  }
+
+  view: top_companies is {
+    group_by: company_name
+    aggregate: total_activity, new_users, comments, chat_messages, new_tasks
+    order_by: total_activity desc
+    limit: 15
+  }
+
+  view: content_created is {
+    aggregate: new_projects, new_tasks, new_notes, new_forms
+  }
+}
+
+query: plan_suggest is company_stats -> {
+  where: plan_name is not null
+  group_by: plan_name
+  limit: 100
+}

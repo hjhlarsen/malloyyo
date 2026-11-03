@@ -1,0 +1,13 @@
+{
+  "includeDefaultConnections": true,
+  "connections": {
+    "rds": {
+      "is": "mysql",
+      "host": { "env": "RDS_HOST" },
+      "port": 3306,
+      "database": "BasicOps",
+      "user": { "env": "RDS_USER" },
+      "password": { "env": "RDS_PASSWORD" }
+    }
+  }
+}

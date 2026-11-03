@@ -1,0 +1,37 @@
+##! experimental.givens
+import "../company_stats.malloy"
+import "../givens.malloy"
+
+// The given mapping lives here: every query below reads from `scoped`.
+source: scoped is company_stats extend {
+  where:
+    stat_date ~ $PERIOD,
+    plan_name ~ $PLAN,
+    $INCLUDE_TEST or not is_test_account
+}
+
+#" Company activity, signups and plan mix across BasicOps workspaces.
+# artifact { title="Company Stats Overview" }
+query: company_overview is scoped -> {
+  aggregate: total_activity, new_users, active_companies, comments, chat_messages, new_tasks
+}
+
+query: activity_trend is scoped -> {
+  group_by: period_month is stat_month
+  aggregate: total_activity, new_users
+  order_by: period_month
+}
+
+query: activity_by_plan is scoped -> {
+  group_by: plan is coalesce(plan_name, 'unassigned')
+  aggregate: total_activity, active_companies
+  order_by: total_activity desc
+  limit: 8
+}
+
+query: top_companies_table is scoped -> {
+  group_by: company is coalesce(company_name, 'unknown')
+  aggregate: total_activity, new_users, comments, chat_messages
+  order_by: total_activity desc
+  limit: 10
+}
