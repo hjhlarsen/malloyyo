@@ -1,6 +1,7 @@
-##" BasicOps workspace 244 data: tasks, projects, sections, users, clients, teams, notes, comments and time entries, plus link sources for one-to-many and many-to-many relations (projects_clients, users_roles, tasks_reviewers, and so on). Generated from BasicOps' table metadata. Trashed rows are excluded. Text is hidden (length only) except for users and companies.
+##" BasicOps data for all workspaces: tasks, projects, sections, users, clients, teams, notes, comments and time entries. Trashed rows are excluded, and text is hidden (length only) except for users and workspaces.
+##(agent) 244 is NOT a workspace. It is the template schema shared by every workspace's data tables. Each row belongs to a workspace through workspace_id (CompanyId); the workspaces source (B_Company_244) has one row per workspace with its name. To answer a question about one workspace, filter on workspace_id or workspace.name; to compare workspaces, group by workspace_id or workspace.name.
 ## dataset { title="BasicOps Workspace Data" }
 import "tables.malloy"
 
-export { users, clients, companies, projects, sections, tasks, task_statuses, task_dependencies, teams, roles, time_entries, notes, comments }
+export { workspaces, users, clients, projects, sections, tasks, task_statuses, task_dependencies, teams, roles, time_entries, notes, comments }
 export { users_roles, users_users, users_notes, projects_tasks, projects_sections, projects_clients, projects_notes, tasks_tasks, tasks_reviewers, tasks_reviewed, tasks_notes }
