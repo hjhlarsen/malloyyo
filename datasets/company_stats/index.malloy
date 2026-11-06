@@ -1,5 +1,6 @@
-##" BasicOps company usage stats: daily per-company activity joined to company and plan details.
+##" BasicOps usage stats: daily per-company and per-user activity, joined to company and plan details.
 ## dataset { title="BasicOps Company Stats" }
 import "company_stats.malloy"
+import "user_stats.malloy"
 
-export { company_stats }
+export { company_stats, user_stats }

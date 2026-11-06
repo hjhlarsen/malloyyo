@@ -1,0 +1,34 @@
+#" Daily per-user activity for BasicOps, joined to the user's company.
+#(agent) One row per user per day. Rank users with total_activity grouped by company_name and user_id; filter stat_date for a window. User names live in per-workspace tables and are not modelled, so users are identified by company_name + user_id. Test accounts are flagged by is_test_account.
+source: user_stats is rds.table("B_UserStats") extend {
+  primary_key: Id
+
+  join_one: company is rds.table("B_Company") extend { primary_key: Id } on CompanyId = company.Id
+
+  dimension:
+    stat_date is Created
+    stat_month is Created.month
+    company_id is CompanyId
+    company_name is company.Name
+    user_id is UserId
+    is_test_account is coalesce(company.TestAccount::number, 0) = 1
+
+  measure:
+    user_days is count()
+    active_users is count(UserId)
+    total_activity is ActivityCount.sum()
+    comments is CommentNo.sum()
+    chat_messages is ChatNo.sum()
+    new_tasks is NewTasks.sum()
+    new_notes is NewNotes.sum()
+    new_projects is NewProjects.sum()
+    active_time_total is ActiveTime.sum()
+    last_active is max(Created)
+
+  view: top_users is {
+    group_by: company_name, user_id
+    aggregate: total_activity, comments, chat_messages, new_tasks, user_days, last_active
+    order_by: total_activity desc
+    limit: 20
+  }
+}
