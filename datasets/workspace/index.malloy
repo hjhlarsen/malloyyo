@@ -1,0 +1,6 @@
+##" BasicOps workspace 244 data: tasks, projects, sections, users, clients, teams, notes, comments and time entries, plus link sources for one-to-many and many-to-many relations (projects_clients, users_roles, tasks_reviewers, and so on). Generated from BasicOps' table metadata. Trashed rows are excluded. Text is hidden (length only) except for users and companies.
+## dataset { title="BasicOps Workspace Data" }
+import "tables.malloy"
+
+export { users, clients, companies, projects, sections, tasks, task_statuses, task_dependencies, teams, roles, time_entries, notes, comments }
+export { users_roles, users_users, users_notes, projects_tasks, projects_sections, projects_clients, projects_notes, tasks_tasks, tasks_reviewers, tasks_reviewed, tasks_notes }
