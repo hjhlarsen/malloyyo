@@ -1,6 +1,8 @@
-##" BasicOps usage stats: daily per-company and per-user activity, joined to company and plan details.
+##" BasicOps usage stats: daily per-company and per-user activity, sign-up requests and Spark onboarding, joined to company and plan details.
 ## dataset { title="BasicOps Company Stats" }
 import "company_stats.malloy"
 import "user_stats.malloy"
+import "signups.malloy"
+import "spark_onboarding.malloy"
 
-export { company_stats, user_stats }
+export { company_stats, user_stats, signup_requests, spark_onboarding }

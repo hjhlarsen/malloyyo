@@ -1,0 +1,46 @@
+#" BasicOps Spark onboarding: one row per user's onboarding chat, with when they were welcomed and how often they opened it.
+#(agent) One row per user per workspace onboarding (B_SparkOnboarding). segment is the kind of user (OWNER, MEMBER, CLIENT, EXTERNAL, EXISTING). opened is true when the user ever opened the onboarding (first_opened is set). Join company for the workspace name; workspace_id is the workspace id. Test accounts are flagged by is_test_account.
+source: spark_onboarding is rds.table("B_SparkOnboarding") extend {
+  primary_key: Id
+
+  join_one: company is rds.table("B_Company") extend { primary_key: Id } on CompanyId = company.Id
+
+  dimension:
+    workspace_id is `CompanyId`
+    company_name is company.Name
+    is_test_account is coalesce(company.TestAccount::number, 0) = 1
+    user_id is `UserId`
+    chat_id is `ChatId`
+    segment is `Segment`
+    welcomed is `Welcomed`
+    welcomed_day is `Welcomed`.day
+    welcomed_week is `Welcomed`.week
+    welcomed_month is `Welcomed`.month
+    first_opened is `FirstOpened`
+    last_opened is `LastOpened`
+    last_closed is `LastClosed`
+    opens is `Opens`
+    closes is `Closes`
+    opened is `FirstOpened` is not null
+
+  measure:
+    onboardings is count()
+    users_opened is count() { where: opened }
+    open_rate is users_opened / onboardings
+    total_opens is `Opens`.sum()
+    total_closes is `Closes`.sum()
+    last_welcomed is max(`Welcomed`)
+
+  view: by_segment is {
+    group_by: segment
+    aggregate: onboardings, users_opened, open_rate, total_opens
+    order_by: onboardings desc
+  }
+
+  view: by_week is {
+    group_by: welcomed_week
+    aggregate: onboardings, users_opened, open_rate
+    order_by: welcomed_week desc
+    limit: 26
+  }
+}

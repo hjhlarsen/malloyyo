@@ -1,0 +1,87 @@
+#" BasicOps sign-up requests: one row per submission of the sign-up flow, with marketing attribution and whether a workspace was created.
+#(agent) One row per sign-up request (B_SignupRequest). has_workspace is true when the sign-up produced a workspace (workspace_id is set); step is how far through the flow it got. Use signup_month / signup_week for trends and utm_source, utm_medium, utm_campaign, referrer or partner for attribution. Personal data (names, email address, phone, IP, cookies, free text) is deliberately not exposed: only email_domain and *_length fields are. Test accounts are flagged by is_test_account.
+source: signup_requests is rds.table("B_SignupRequest") extend {
+  primary_key: Id
+
+  join_one: company is rds.table("B_Company") extend { primary_key: Id } on CompanyId = company.Id
+
+  dimension:
+    created_at is `Created`
+    signup_day is `Created`.day
+    signup_week is `Created`.week
+    signup_month is `Created`.month
+    signup_year is `Created`.year
+    workspace_id is `CompanyId`
+    has_workspace is coalesce(`CompanyId`, 0) > 0
+    company_name is company.Name
+    is_test_account is coalesce(company.TestAccount::number, 0) = 1
+
+    state is `State`
+    step is `Step`
+    version is `Version`
+    plan is `Plan`
+    plan_name is `Plan2`
+    org_size is `OrgSize`
+    is_free is coalesce(`Free`::number, 0) = 1
+    is_mobile is coalesce(`IsMobile`::number, 0) = 1
+    is_webex_visitor is coalesce(`WebexVisitor`::number, 0) = 1
+    workspace_email_sent is `WorkspaceEmailSent`
+    screen_width is `ScreenWidth`
+    screen_height is `ScreenHeight`
+
+    department is `Department`
+    industry is `Industry`
+    team_size is `TeamSize`
+    team is `Team`
+    goals is `Goals`
+    motivated is `Motivated`
+    learn is `Learn`
+    partner is `Partner`
+    environment is `Environment`
+    referrer is `Referrer`
+    referral_program is `ReferralProgram`
+    referrer_company_id is `ReferrerCompanyId`
+    cloud_signup is `CloudSignup`
+    geolocation is `Geolocation`
+    promotion_code is `PromotionCode`
+    utm_source is `UtmSource`
+    utm_medium is `UtmMedium`
+    utm_campaign is `UtmCampaign`
+    utm_content is `UtmContent`
+    utm_term is `UtmTerm`
+    utm_creative is `UtmCreative`
+    utm_referrer is `UtmReferrer`
+
+    # Domain part of the sign-up email address. The address itself is not exposed.
+    email_domain is pick lower(substr(`Email`, strpos(`Email`, '@') + 1)) when strpos(`Email`, '@') > 0 else null
+    company_name_entered_length is length(`CompanyName`::string)
+    has_phone is length(`Phone`::string) > 0
+
+  measure:
+    signups is count()
+    workspaces_created is count() { where: has_workspace }
+    workspace_rate is workspaces_created / signups
+    mobile_signups is count() { where: is_mobile }
+    first_signup is min(created_at)
+    last_signup is max(created_at)
+
+  view: by_month is {
+    group_by: signup_month
+    aggregate: signups, workspaces_created, workspace_rate
+    order_by: signup_month desc
+    limit: 36
+  }
+
+  view: by_source is {
+    group_by: utm_source, utm_medium
+    aggregate: signups, workspaces_created, workspace_rate
+    order_by: signups desc
+    limit: 30
+  }
+
+  view: by_step is {
+    group_by: step
+    aggregate: signups, workspaces_created
+    order_by: step
+  }
+}
