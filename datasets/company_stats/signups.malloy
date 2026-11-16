@@ -68,6 +68,12 @@ source: signup_requests is rds.table("B_SignupRequest") extend {
       pick 'basicops' when lower(`ReferrerUrl`::string) ~ '%basicops.com%'
       else 'other'
 
+    # Which Webex surface the sign-up happened in. Environment holds a small JSON value such as {"context":"SPACE_TAB"}; only the context is exposed.
+    webex_surface is pick 'space tab' when `Environment`::string ~ '%SPACE_TAB%'
+      pick 'meeting sidebar' when `Environment`::string ~ '%MEETING_SIDEBAR%'
+      pick 'embedded window' when `Environment`::string ~ '%SIDEBAR_EMBEDDED_WINDOW%'
+      else null
+
     # Domain part of the sign-up email address. The address itself is not exposed.
     email_domain is pick lower(substr(`Email`, strpos(`Email`, '@') + 1)) when strpos(`Email`, '@') > 0 else null
     company_name_entered_length is length(`CompanyName`::string)
@@ -97,6 +103,12 @@ source: signup_requests is rds.table("B_SignupRequest") extend {
 
   view: by_referrer_kind is {
     group_by: referrer_kind
+    aggregate: signups, workspaces_created, workspace_rate
+    order_by: signups desc
+  }
+
+  view: by_webex_surface is {
+    group_by: webex_surface
     aggregate: signups, workspaces_created, workspace_rate
     order_by: signups desc
   }
