@@ -52,6 +52,22 @@ source: signup_requests is rds.table("B_SignupRequest") extend {
     utm_creative is `UtmCreative`
     utm_referrer is `UtmReferrer`
 
+    # Where the sign-up came from, derived from ReferrerUrl. The column holds either a short label (for example "webex embedded" or "ai client: claude") or a URL. A full URL is never exposed because it may carry personal data in its query string: URLs are reduced to their host.
+    has_referrer_url is length(`ReferrerUrl`::string) > 0
+    referrer_label is pick null when coalesce(length(`ReferrerUrl`::string), 0) = 0
+      pick lower(substr(`ReferrerUrl`::string, 1, 60)) when strpos(`ReferrerUrl`::string, '://') = 0
+      else lower(substr(
+        substr(`ReferrerUrl`::string, strpos(`ReferrerUrl`::string, '://') + 3),
+        1,
+        strpos(concat(substr(`ReferrerUrl`::string, strpos(`ReferrerUrl`::string, '://') + 3), '/'), '/') - 1))
+    referrer_kind is pick 'none' when coalesce(length(`ReferrerUrl`::string), 0) = 0
+      pick 'claude' when lower(`ReferrerUrl`::string) ~ '%claude%' or lower(`ReferrerUrl`::string) ~ '%anthropic.com%'
+      pick 'chatgpt' when lower(`ReferrerUrl`::string) ~ '%chatgpt%' or lower(`ReferrerUrl`::string) ~ '%openai.com%'
+      pick 'webex' when lower(`ReferrerUrl`::string) ~ '%webex%' or lower(`ReferrerUrl`::string) ~ '%wbx2.com%'
+      pick 'google' when lower(`ReferrerUrl`::string) ~ '%google.%'
+      pick 'basicops' when lower(`ReferrerUrl`::string) ~ '%basicops.com%'
+      else 'other'
+
     # Domain part of the sign-up email address. The address itself is not exposed.
     email_domain is pick lower(substr(`Email`, strpos(`Email`, '@') + 1)) when strpos(`Email`, '@') > 0 else null
     company_name_entered_length is length(`CompanyName`::string)
@@ -77,6 +93,12 @@ source: signup_requests is rds.table("B_SignupRequest") extend {
     aggregate: signups, workspaces_created, workspace_rate
     order_by: signups desc
     limit: 30
+  }
+
+  view: by_referrer_kind is {
+    group_by: referrer_kind
+    aggregate: signups, workspaces_created, workspace_rate
+    order_by: signups desc
   }
 
   view: by_step is {
