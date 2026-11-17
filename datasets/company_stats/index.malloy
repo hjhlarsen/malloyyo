@@ -4,5 +4,6 @@ import "company_stats.malloy"
 import "user_stats.malloy"
 import "signups.malloy"
 import "spark_onboarding.malloy"
+import "owner_workspaces.malloy"
 
-export { company_stats, user_stats, signup_requests, spark_onboarding }
+export { company_stats, user_stats, signup_requests, spark_onboarding, owner_workspaces }

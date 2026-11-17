@@ -1,0 +1,88 @@
+import "company_stats.malloy"
+import "signups.malloy"
+import "spark_onboarding.malloy"
+
+#" BasicOps new owner workspaces: one row per workspace, with where the owner came from, what was created first, and whether they came back.
+#(agent) One row per workspace with activity, excluding test accounts. Filter on came_from_signup to keep only workspaces created by a sign-up request (the saved views do). signup_source is where the owner came from (claude, chatgpt, webex, google, basicops, other, none) and webex_surface which Webex surface; first_object is the kind of object created on the first day anything was created (project, note, task, none), and first_object_day is how many days after sign-up that was. returned_day_2_7 is true when the workspace had activity on any of days 2 to 7 after sign-up, returned_week_2 when it had some on days 8 to 14. A workspace needs at least 7 days since sign-up (matured_7d) before returned_day_2_7 means anything, and 14 for returned_week_2 (matured_14d): filter on those. spark_opened is true when the owner ever opened Spark. Group by signup_week to compare cohorts. Counts are small: read them as patterns to follow up on, not results.
+source: owner_workspaces is company_stats -> {
+  where: not is_test_account
+  group_by: company_id
+  aggregate:
+    signed_up is min(company_created)
+    first_project_day is min(stat_date) { where: NewProjects > 0 }
+    first_note_day is min(stat_date) { where: NewNotes > 0 }
+    first_task_day is min(stat_date) { where: NewTasks > 0 }
+    days_2_7 is count() { where: days(company_created::date to stat_date) >= 2 and days(company_created::date to stat_date) <= 7 }
+    days_8_14 is count() { where: days(company_created::date to stat_date) >= 8 and days(company_created::date to stat_date) <= 14 }
+    active_days is count()
+    last_active is max(stat_date)
+} extend {
+  primary_key: company_id
+
+  join_one: signup is signup_requests on company_id = signup.workspace_id
+  join_one: owner_spark is spark_onboarding on company_id = owner_spark.workspace_id and owner_spark.segment = 'OWNER'
+
+  dimension:
+    signup_day is signed_up.day
+    signup_week is signed_up.week
+    signup_month is signed_up.month
+    came_from_signup is signup.workspace_id is not null
+    signup_source is signup.referrer_kind
+    signup_label is signup.referrer_label
+    webex_surface is signup.webex_surface
+    utm_source is signup.utm_source
+    first_object_day is
+      days(signed_up::date to least(
+        coalesce(first_project_day, @2999-01-01),
+        coalesce(first_note_day, @2999-01-01),
+        coalesce(first_task_day, @2999-01-01)))
+    first_object is
+      pick 'none' when first_project_day is null and first_note_day is null and first_task_day is null
+      pick 'project' when coalesce(first_project_day, @2999-01-01) <= coalesce(first_note_day, @2999-01-01) and coalesce(first_project_day, @2999-01-01) <= coalesce(first_task_day, @2999-01-01)
+      pick 'note' when coalesce(first_note_day, @2999-01-01) <= coalesce(first_task_day, @2999-01-01)
+      else 'task'
+    days_since_signup is days(signed_up::date to now::date)
+    matured_7d is days(signed_up::date to now::date) >= 7
+    matured_14d is days(signed_up::date to now::date) >= 14
+    returned_day_2_7 is days_2_7 > 0
+    returned_week_2 is days_8_14 > 0
+    spark_welcomed is owner_spark.welcomed is not null
+    spark_opened is owner_spark.opened
+
+  measure:
+    workspaces is count()
+    returned_2_7 is count() { where: returned_day_2_7 }
+    returned_2_7_rate is returned_2_7 / workspaces
+    returned_wk2 is count() { where: returned_week_2 }
+    returned_wk2_rate is returned_wk2 / workspaces
+    opened_spark is count() { where: spark_opened }
+
+  view: by_source is {
+    group_by: signup_source
+    where: came_from_signup and matured_7d
+    aggregate: workspaces, returned_2_7, returned_2_7_rate, opened_spark
+    order_by: workspaces desc
+  }
+
+  view: by_first_object is {
+    group_by: first_object
+    where: came_from_signup and matured_7d
+    aggregate: workspaces, returned_2_7, returned_2_7_rate
+    order_by: workspaces desc
+  }
+
+  view: by_source_and_first_object is {
+    group_by: signup_source, first_object
+    where: came_from_signup and matured_7d
+    aggregate: workspaces, returned_2_7, returned_2_7_rate
+    order_by: signup_source, workspaces desc
+  }
+
+  view: by_week is {
+    where: came_from_signup
+    group_by: signup_week
+    aggregate: workspaces, returned_2_7, opened_spark
+    order_by: signup_week desc
+    limit: 26
+  }
+}
