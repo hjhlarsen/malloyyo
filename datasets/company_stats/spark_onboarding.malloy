@@ -1,7 +1,8 @@
 #" BasicOps Spark onboarding: one row per user's onboarding chat, with when they were welcomed and how often they opened it.
-#(agent) One row per user per workspace onboarding (B_SparkOnboarding). segment is the kind of user (OWNER, MEMBER, CLIENT, EXTERNAL, EXISTING). opened is true when the user ever opened the onboarding (first_opened is set). Join company for the workspace name; workspace_id is the workspace id. Test accounts are flagged by is_test_account.
+#(agent) One row per user per workspace onboarding (B_SparkOnboarding). segment is the kind of user (OWNER, MEMBER, CLIENT, EXTERNAL, EXISTING). opened is true when the user ever opened the onboarding (first_opened is set). stated_reason and first_built_kind are what an owner told Spark they came for and what Spark built first, null until recorded; most rows have neither yet. Join company for the workspace name; workspace_id is the workspace id. Test accounts are flagged by is_test_account.
 source: spark_onboarding is rds.table("B_SparkOnboarding") extend {
   primary_key: Id
+  except: StatedReasonSummary
 
   join_one: company is rds.table("B_Company") extend { primary_key: Id } on CompanyId = company.Id
 
@@ -22,6 +23,11 @@ source: spark_onboarding is rds.table("B_SparkOnboarding") extend {
     opens is `Opens`
     closes is `Closes`
     opened is `FirstOpened` is not null
+    # What the owner told Spark they came for, one of team_planning, meeting_notes, personal_todos, other. Null until they have said. A typed answer is Spark's closest guess, and a specific reason replaces "other". The one-sentence summary of a typed answer is deliberately not exposed.
+    stated_reason is `StatedReason`
+    # What Spark built first for the owner: project, note or other. Null until it has built something.
+    first_built_kind is `FirstBuiltKind`
+    has_stated_reason is `StatedReason` is not null
 
   measure:
     onboardings is count()
@@ -29,11 +35,18 @@ source: spark_onboarding is rds.table("B_SparkOnboarding") extend {
     open_rate is users_opened / onboardings
     total_opens is `Opens`.sum()
     total_closes is `Closes`.sum()
+    reasons_recorded is count() { where: has_stated_reason }
     last_welcomed is max(`Welcomed`)
 
   view: by_segment is {
     group_by: segment
     aggregate: onboardings, users_opened, open_rate, total_opens
+    order_by: onboardings desc
+  }
+
+  view: by_stated_reason is {
+    group_by: stated_reason
+    aggregate: onboardings, users_opened, reasons_recorded
     order_by: onboardings desc
   }
 

@@ -3,7 +3,7 @@ import "signups.malloy"
 import "spark_onboarding.malloy"
 
 #" BasicOps new owner workspaces: one row per workspace, with where the owner came from, what was created first, and whether they came back.
-#(agent) One row per workspace with activity, excluding test accounts. Filter on came_from_signup to keep only workspaces created by a sign-up request (the saved views do). signup_source is where the owner came from (claude, chatgpt, webex, google, basicops, other, none) and webex_surface which Webex surface; first_object is the kind of object created on the first day anything was created (project, note, task, none), and first_object_day is how many days after sign-up that was. returned_day_2_7 is true when the workspace had activity on any of days 2 to 7 after sign-up, returned_week_2 when it had some on days 8 to 14. A workspace needs at least 7 days since sign-up (matured_7d) before returned_day_2_7 means anything, and 14 for returned_week_2 (matured_14d): filter on those. spark_opened is true when the owner ever opened Spark. Group by signup_week to compare cohorts. Counts are small: read them as patterns to follow up on, not results.
+#(agent) One row per workspace with activity, excluding test accounts. Filter on came_from_signup to keep only workspaces created by a sign-up request (the saved views do). signup_source is where the owner came from (claude, chatgpt, webex, google, basicops, other, none) and webex_surface which Webex surface; first_object is the kind of object created on the first day anything was created (project, note, task, none), and first_object_day is how many days after sign-up that was. returned_day_2_7 is true when the workspace had activity on any of days 2 to 7 after sign-up, returned_week_2 when it had some on days 8 to 14. A workspace needs at least 7 days since sign-up (matured_7d) before returned_day_2_7 means anything, and 14 for returned_week_2 (matured_14d): filter on those. spark_opened is true when the owner ever opened Spark. stated_reason is what the owner told Spark they came for, and first_built_kind what Spark built first; both are null until recorded and recording began on 17 Nov, so the by_stated_reason view stays small for weeks. Group by signup_week to compare cohorts. Counts are small: read them as patterns to follow up on, not results.
 source: owner_workspaces is company_stats -> {
   where: not is_test_account
   group_by: company_id
@@ -48,6 +48,8 @@ source: owner_workspaces is company_stats -> {
     returned_week_2 is days_8_14 > 0
     spark_welcomed is owner_spark.welcomed is not null
     spark_opened is owner_spark.opened
+    stated_reason is owner_spark.stated_reason
+    first_built_kind is owner_spark.first_built_kind
 
   measure:
     workspaces is count()
@@ -76,6 +78,13 @@ source: owner_workspaces is company_stats -> {
     where: came_from_signup and matured_7d
     aggregate: workspaces, returned_2_7, returned_2_7_rate
     order_by: signup_source, workspaces desc
+  }
+
+  view: by_stated_reason is {
+    where: came_from_signup and matured_7d and stated_reason is not null
+    group_by: stated_reason
+    aggregate: workspaces, returned_2_7, returned_2_7_rate
+    order_by: workspaces desc
   }
 
   view: by_week is {
